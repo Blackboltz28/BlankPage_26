@@ -10,6 +10,19 @@ if ! command -v chromium-browser > /dev/null && ! command -v chromium > /dev/nul
   exit 1
 fi
 
+# Remove any other kiosk set up on this Pi before (a Chromium started with --kiosk),
+# so it doesn't open on top of ours.
+for f in ~/.config/labwc/autostart ~/.config/wayfire.ini; do
+  [ -f "$f" ] && grep -n -- "--kiosk" "$f" && sed -i '/--kiosk/d' "$f" && echo "Removed an old kiosk from $f"
+done
+for f in ~/.config/autostart/*.desktop; do
+  [ -f "$f" ] && grep -q -- "--kiosk" "$f" && rm "$f" && echo "Removed an old kiosk: $f"
+done
+for f in /etc/xdg/labwc/autostart /etc/xdg/autostart/*.desktop; do
+  [ -f "$f" ] && grep -q -- "chromium.*--kiosk" "$f" && sudo sed -i '/chromium.*--kiosk/d' "$f" && echo "Removed an old kiosk from $f"
+done
+pkill -f "chromium.*--kiosk" && sleep 2 || true
+
 # Raspberry Pi OS has used three different desktops, so start the kiosk from all of them.
 # kiosk.sh exits straight away if it's already open, so it never opens twice.
 
@@ -41,6 +54,17 @@ EOF
 sudo raspi-config nonint do_blanking 1 || true
 
 echo "Server: $(systemctl is-active blankpage-server 2>/dev/null || echo 'not set up - run deploy/setup-server.sh')"
+
+# If the screen is showing a text terminal (Ctrl+Alt+F1-F6), switch it back to the desktop.
+for s in $(loginctl list-sessions --no-legend | awk '{print $1}'); do
+  case "$(loginctl show-session "$s" -p Type --value 2> /dev/null)" in
+    wayland | x11)
+      VT="$(loginctl show-session "$s" -p VTNr --value)"
+      [ -n "$VT" ] && [ "$VT" != 0 ] && sudo chvt "$VT" && echo "Switched the screen to the desktop."
+      break
+      ;;
+  esac
+done
 
 # Open it on the screen right now if the desktop is running.
 RUNTIME="/run/user/$(id -u)"
