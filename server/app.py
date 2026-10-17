@@ -1,4 +1,5 @@
 import sqlite3
+import secrets
 from flask import Flask, request
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -41,6 +42,30 @@ def register():
         return {"error": "That username is taken."}, 409
 
     return {"message": "Account created"}, 201
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json()
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+
+    with getdb() as conn:
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+
+        
+        if user is None or not check_password_hash(user["password_hash"], password):
+            return {"error": "Wrong username or password."}, 401
+
+        token = secrets.token_hex(16)
+
+        conn.execute(
+            "UPDATE users SET token = ? WHERE id = ?",
+            (token, user["id"])
+        )
+        return {"token": token, "username": user["username"]}
+        
 
 if __name__ == "__main__":
     initdb()
