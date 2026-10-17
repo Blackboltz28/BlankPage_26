@@ -1,6 +1,6 @@
 """Works out who is standing closest to the kiosk.
 
-Each person's ESP32 broadcasts a Bluetooth name like "BP-3" (3 = its device id).
+Each person's ESP32 broadcasts a Bluetooth name like "TM-3" (3 = its device id).
 This Pi listens for those broadcasts; the stronger the signal (RSSI), the closer the person.
 Readings can also be sent in over HTTP (POST /api/presence), which is handy for testing
 or for an ESP32 that does the listening instead.
@@ -9,7 +9,7 @@ import asyncio
 import threading
 import time
 
-TAG_PREFIX = "BP-"
+TAG_PREFIX = "TM-"
 NEAR_RSSI = -85      # weaker than this (in dBm) doesn't count as being near the kiosk
 GONE_AFTER = 12      # seconds without hearing a tag before that person counts as gone
 SWITCH_MARGIN = 6    # dB a new person must beat whoever is showing by, so the screen doesn't flicker

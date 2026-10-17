@@ -1,4 +1,4 @@
-export const APP_NAME = "BlankPage";
+export const APP_NAME = "TaskMaster";
 
 // The app calls /api/... on the same address it was loaded from:
 // - `npm run dev`: Vite forwards /api to the server set in website/.env

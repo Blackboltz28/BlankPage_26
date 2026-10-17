@@ -46,7 +46,7 @@ mkdir -p ~/.config/autostart
 cat > ~/.config/autostart/blankpage-kiosk.desktop <<EOF
 [Desktop Entry]
 Type=Application
-Name=BlankPage kiosk
+Name=TaskMaster kiosk
 Exec=$LAUNCH
 EOF
 

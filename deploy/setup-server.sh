@@ -13,7 +13,7 @@ pkill -f "[p]ython app.py" || true
 
 sudo tee /etc/systemd/system/blankpage-server.service > /dev/null <<EOF
 [Unit]
-Description=BlankPage server
+Description=TaskMaster server
 After=network-online.target bluetooth.target
 Wants=network-online.target
 

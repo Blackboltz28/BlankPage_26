@@ -551,7 +551,7 @@ def kiosk_mark_done(todo_id):
 
 @app.route("/api/presence", methods=["POST"])
 def report_presence():
-    """Send in a signal reading by hand: {"beacon": "BP-3", "rssi": -60}. For testing,
+    """Send in a signal reading by hand: {"beacon": "TM-3", "rssi": -60}. For testing,
     or for an ESP32 that listens for tags instead of this Pi."""
     if not kiosk_allowed():
         return KIOSK_ONLY
@@ -559,7 +559,7 @@ def report_presence():
     data = request.get_json()
     device_id = presence.tag_to_device_id(data.get("beacon", ""))
     if device_id is None or not isinstance(data.get("rssi"), (int, float)):
-        return {"error": 'Send {"beacon": "BP-<device id>", "rssi": <number>}'}, 400
+        return {"error": 'Send {"beacon": "TM-<device id>", "rssi": <number>}'}, 400
     presence.update(device_id, data["rssi"])
     return {"message": "OK"}
 

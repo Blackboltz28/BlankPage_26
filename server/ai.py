@@ -194,7 +194,7 @@ def delete_source_file(file_id):
         pass  # The file is already gone, or we're offline. Nothing the user can do about it.
 
 
-CHAT_SYSTEM = """You're the assistant inside BlankPage, a to-do app. The user's Raspberry Pi \
+CHAT_SYSTEM = """You're the assistant inside TaskMaster, a to-do app. The user's Raspberry Pi \
 reminds them in person when a task is due. Answer questions about their tasks and uploaded \
 files, and help them plan.
 

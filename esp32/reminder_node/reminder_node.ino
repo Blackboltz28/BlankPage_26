@@ -1,4 +1,4 @@
-// BlankPage reminder device for ESP32.
+// TaskMaster reminder device for ESP32.
 //
 // Every few seconds it asks the server Pi "anything due for me?". When a task is due it
 // beeps and blinks until someone presses the button:
@@ -6,7 +6,7 @@
 //   - hold for 1 second -> stops ringing (the task stays on the list)
 // It also gives two quick beeps when you press "Test beep" on the website.
 //
-// It also broadcasts a Bluetooth name like "BP-3" so the kiosk can tell its owner is
+// It also broadcasts a Bluetooth name like "TM-3" so the kiosk can tell its owner is
 // standing nearby, and show their tasks.
 //
 // Setup:
@@ -51,7 +51,7 @@ bool buzzerOn = false;
 unsigned long pressStarted = 0;
 bool wasPressed = false;
 
-String beaconName;  // e.g. "BP-3", told to us by the server on the first check-in
+String beaconName;  // e.g. "TM-3", told to us by the server on the first check-in
 
 // Broadcasts our Bluetooth name over and over so the kiosk can measure how close we are.
 void startBeacon(const String& name) {
@@ -107,7 +107,7 @@ bool findServer() {
   if (strlen(SERVER_IP) > 0) {
     ip.fromString(SERVER_IP);
   } else {
-    MDNS.begin("blankpage-device");
+    MDNS.begin("taskmaster-device");
     ip = MDNS.queryHost(SERVER_NAME, 3000);
     if (ip[0] == 0) {
       Serial.printf("Couldn't find %s.local - is the server Pi on the same Wi-Fi?\n", SERVER_NAME);

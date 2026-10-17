@@ -1,4 +1,4 @@
-# Setting up the server Pi and kiosk
+# Setting up TaskMaster: the server Pi and kiosk
 
 One Pi (`mk3`) does everything: runs the server, serves the website, listens for the
 ESP32 tags over Bluetooth, and shows the kiosk on its touchscreen.
@@ -6,7 +6,7 @@ ESP32 tags over Bluetooth, and shows the kiosk on its touchscreen.
 ```
  Phones / laptops ──► http://mk3.local:5000 ──┐
                                               ▼
- ESP32 tags (Bluetooth "BP-1", "BP-2"...) ──► mk3: Flask + database + Bluetooth listener
+ ESP32 tags (Bluetooth "TM-1", "TM-2"...) ──► mk3: Flask + database + Bluetooth listener
  ESP32s check for reminders over Wi-Fi ─────► └── touchscreen: http://localhost:5000/kiosk
 ```
 
@@ -56,7 +56,7 @@ very close and -85 means across the room.
 1. Each person signs up on the website and adds their ESP32 under **Devices** → **+**. Copy the key.
 2. Open `esp32/reminder_node/reminder_node.ino` in the Arduino IDE. Set the Wi-Fi, `DEVICE_KEY`
    and pins at the top, and choose **Tools → Partition Scheme → Huge APP**.
-3. Upload. The Serial Monitor (115200 baud) shows `Broadcasting Bluetooth tag BP-…`.
+3. Upload. The Serial Monitor (115200 baud) shows `Broadcasting Bluetooth tag TM-…`.
 
 Each ESP32 also rings when its owner's tasks are due. **Short press = done, hold 1 s = stop ringing.**
 
@@ -65,5 +65,5 @@ Each ESP32 also rings when its owner's tasks are due. **Short press = done, hold
 Pretend device 1 is right next to the kiosk (run this on the Pi):
 
 ```bash
-curl -X POST localhost:5000/api/presence -H "Content-Type: application/json" -d '{"beacon": "BP-1", "rssi": -50}'
+curl -X POST localhost:5000/api/presence -H "Content-Type: application/json" -d '{"beacon": "TM-1", "rssi": -50}'
 ```
