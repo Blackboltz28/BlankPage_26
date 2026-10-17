@@ -1,0 +1,17 @@
+# Runs the Flask server on the server Pi at boot, and restarts it if it crashes.
+# Install it with the steps in deploy/README.md.
+[Unit]
+Description=BlankPage server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=blankpage
+WorkingDirectory=/home/blankpage/BlankPage_26/server
+ExecStart=/home/blankpage/BlankPage_26/server/venv/bin/python app.py
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

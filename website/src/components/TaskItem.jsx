@@ -1,7 +1,7 @@
-import { Bell, Check, Trash2 } from "lucide-react";
+import { Bell, Check, Radio, Trash2 } from "lucide-react";
 import { formatDue, parseDue } from "../tasks";
 
-export default function TaskItem({ task, now, onToggle, onDelete }) {
+export default function TaskItem({ task, deviceName, now, onToggle, onDelete }) {
   const overdue = !task.done && task.due_at && parseDue(task.due_at) < now;
 
   return (
@@ -19,11 +19,21 @@ export default function TaskItem({ task, now, onToggle, onDelete }) {
 
       <div className="task-main">
         <span className="task-title">{task.title}</span>
-        {task.due_at && (
-          <span className={`due-chip${overdue ? " is-overdue" : ""}`}>
-            <Bell size={13} />
-            {formatDue(task.due_at, now)}
-          </span>
+        {(task.due_at || deviceName) && (
+          <div className="task-chips">
+            {task.due_at && (
+              <span className={`due-chip${overdue ? " is-overdue" : ""}`}>
+                <Bell size={13} />
+                {formatDue(task.due_at, now)}
+              </span>
+            )}
+            {deviceName && (
+              <span className="due-chip">
+                <Radio size={13} />
+                {deviceName}
+              </span>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,7 +1,7 @@
 import { useId, useState } from "react";
 import { Bell, LoaderCircle } from "lucide-react";
 import { apiFetch } from "../api";
-import { API_URL, APP_NAME } from "../config";
+import { APP_NAME, SERVER_LABEL } from "../config";
 
 export default function SignIn({ onSignedIn }) {
   const [mode, setMode] = useState("signin"); // "signin" or "signup"
@@ -73,7 +73,7 @@ export default function SignIn({ onSignedIn }) {
           </button>
         </form>
 
-        <p className="auth-footnote">Server: {API_URL.replace(/^https?:\/\//, "")}</p>
+        <p className="auth-footnote">Server: {SERVER_LABEL}</p>
       </div>
     </main>
   );

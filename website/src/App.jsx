@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "./api";
+import Ambient from "./components/Ambient";
 import SignIn from "./components/SignIn";
 import Workspace from "./components/Workspace";
+
+// The kiosk screen lives at /ambient; everything else is the normal app.
+const isAmbient = window.location.pathname.replace(/\/+$/, "") === "/ambient";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -38,5 +42,6 @@ export default function App() {
     );
   }
   if (!user) return <SignIn onSignedIn={handleSignedIn} />;
+  if (isAmbient) return <Ambient onSignOut={handleSignOut} />;
   return <Workspace username={user} onSignOut={handleSignOut} />;
 }

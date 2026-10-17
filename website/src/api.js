@@ -9,18 +9,20 @@ export class ApiError extends Error {
 
 // Calls the Flask server and returns the JSON it sends back.
 // Sends the saved login token automatically, and throws an ApiError when something goes wrong.
+// `body` can be a plain object (sent as JSON) or FormData (for file uploads).
 export async function apiFetch(path, { method = "GET", body } = {}) {
   const headers = {};
   const token = localStorage.getItem("token");
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
 
   let res;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined || isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError("Can't reach the server. Is it running?", 0);
@@ -28,7 +30,7 @@ export async function apiFetch(path, { method = "GET", body } = {}) {
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new ApiError(data.error || `Something went wrong (${res.status})`, res.status);
+    throw new ApiError(data.error || `Can't reach the server (${res.status}). Is it running?`, res.status);
   }
   return data;
 }

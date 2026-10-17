@@ -22,3 +22,6 @@ gradle-app.setting
 
 app.db
 __pycache__/    
+# Secrets and Python virtual environments
+server/.env
+venv/
