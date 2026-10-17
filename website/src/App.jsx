@@ -1,61 +1,42 @@
-import { useState } from 'react'
-
-
-const api = "http://localhost:5000";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "./api";
+import SignIn from "./components/SignIn";
+import Workspace from "./components/Workspace";
 
 export default function App() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [user, setUser] = useState(null);  
+  const [user, setUser] = useState(null);
+  // If a token is saved from last time, check it with the server before showing anything.
+  const [checking, setChecking] = useState(() => Boolean(localStorage.getItem("token")));
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    
-    const res = await fetch(`${api}/api/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        username, password
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error);
-      return;
-    }
+  useEffect(() => {
+    if (!localStorage.getItem("token")) return;
+    apiFetch("/api/me")
+      .then((data) => setUser(data.username))
+      .catch((err) => {
+        if (err.status === 401) localStorage.removeItem("token");
+      })
+      .finally(() => setChecking(false));
+  }, []);
 
+  const handleSignedIn = useCallback((data) => {
     localStorage.setItem("token", data.token);
     setUser(data.username);
-  }
-  async function handleSignUp() {
-  const res = await fetch(`${api}/api/register`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    setError(data.error);
-    return;
-  }
-  alert("Account created! Now click Sign In.");
-  }
+  }, []);
 
-  if (user) {
-    return <h1>Welcome, {user}!</h1>;
-  }
+  const handleSignOut = useCallback(() => {
+    // apiFetch reads the token before the request goes out, so it's safe to clear it right after.
+    apiFetch("/api/logout", { method: "POST" }).catch(() => {});
+    localStorage.removeItem("token");
+    setUser(null);
+  }, []);
 
-  return (
-    <form onSubmit={handleSubmit}>
-      <h1>Sign in</h1>
-      <input placeholder='Username' value={username} onChange={(e) => setUsername(e.target.value)} />
-      <input type='password' placeholder='Password' value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button type='submit'>Sign In</button>
-      <button type="button" onClick={handleSignUp}>Sign Up</button>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-    </form>
-  )
+  if (checking) {
+    return (
+      <div className="splash">
+        <div className="spinner" />
+      </div>
+    );
+  }
+  if (!user) return <SignIn onSignedIn={handleSignedIn} />;
+  return <Workspace username={user} onSignOut={handleSignOut} />;
 }
