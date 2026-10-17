@@ -1588,8 +1588,8 @@ code {
   }
 }
 
-/* Small kiosk screens like the 7" Raspberry Pi Touch Display (800 x 480) */
-@media (max-height: 560px) and (orientation: landscape) {
+/* Small 7" kiosk screens (800 x 480 and 1024 x 600) */
+@media (max-height: 640px) and (orientation: landscape) {
   .ambient {
     grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
     gap: 24px;
