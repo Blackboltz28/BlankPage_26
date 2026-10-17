@@ -5,9 +5,11 @@ import secrets
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
+
+import presence
 
 # The AI packages are optional: without them the app still runs, just without the AI features.
 try:
@@ -22,6 +24,9 @@ except ImportError:
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024  # biggest upload allowed: 20 MB
 CORS(app)
+
+# The built website (npm run build puts it here), so this Pi can serve the site and the kiosk too.
+SITE_DIR = Path(__file__).resolve().parent / "site"
 
 DUE_FORMAT = "%Y-%m-%dT%H:%M"
 DEVICE_ONLINE_SECONDS = 30
@@ -155,6 +160,7 @@ def device_dict(row):
         "id": row["id"],
         "name": row["name"],
         "key": row["key"],
+        "beacon": f"{presence.TAG_PREFIX}{row['id']}",
         "online": online,
         "last_seen": row["last_seen"],
     }
@@ -442,6 +448,8 @@ def device_poll():
         ).fetchall()
     return {
         "name": device["name"],
+        # The Bluetooth name this ESP32 should broadcast so the kiosk can tell who's nearby.
+        "beacon": f"{presence.TAG_PREFIX}{device['id']}",
         "test": bool(device["test_requested"]),
         "reminders": [{"id": row["id"], "title": row["title"], "due_at": row["due_at"]} for row in rows],
     }
@@ -468,6 +476,91 @@ def device_finish_reminder(todo_id, action):
         )
         if action == "done":
             conn.execute("UPDATE todos SET done = 1 WHERE id = ?", (todo_id,))
+    return {"message": "OK"}
+
+
+# ---------- Kiosk: shows the tasks of whoever is standing closest ----------
+
+def kiosk_allowed():
+    """The kiosk screen runs on this Pi, so requests from the Pi itself are allowed.
+    Other computers need ?key=... matching KIOSK_KEY in server/.env."""
+    if request.remote_addr in ("127.0.0.1", "::1"):
+        return True
+    key = os.environ.get("KIOSK_KEY")
+    return bool(key) and key in (request.args.get("key"), request.headers.get("X-Kiosk-Key"))
+
+
+KIOSK_ONLY = {"error": "Only the kiosk can do that. Open it on the server Pi, or add ?key= with KIOSK_KEY."}, 403
+
+
+@app.route("/api/kiosk")
+def kiosk():
+    if not kiosk_allowed():
+        return KIOSK_ONLY
+
+    with getdb() as conn:
+        known_ids = {row["id"] for row in conn.execute("SELECT id FROM devices")}
+        device_id, live = presence.closest(known_ids)
+        owners = {}
+        for nearby_id, rssi in live:
+            row = conn.execute(
+                "SELECT devices.name AS device, users.id AS user_id, users.username FROM devices "
+                "JOIN users ON users.id = devices.user_id WHERE devices.id = ?",
+                (nearby_id,),
+            ).fetchone()
+            if row:
+                owners[nearby_id] = {"name": row["username"], "device": row["device"], "user_id": row["user_id"], "rssi": round(rssi)}
+
+        person = owners.get(device_id)
+        tasks = []
+        if person:
+            rows = conn.execute(
+                "SELECT * FROM todos WHERE user_id = ? ORDER BY due_at IS NULL, due_at, id",
+                (person["user_id"],),
+            ).fetchall()
+            tasks = [todo_dict(row) for row in rows]
+
+    public = lambda p: {k: v for k, v in p.items() if k != "user_id"}
+    return {
+        "scanner": presence.status(),
+        "person": public(person) if person else None,
+        "nearby": [public(p) for p in owners.values()],
+        "tasks": tasks,
+    }
+
+
+@app.route("/api/kiosk/todos/<int:todo_id>/done", methods=["POST"])
+def kiosk_mark_done(todo_id):
+    """The "Mark done" button on the kiosk's touchscreen."""
+    if not kiosk_allowed():
+        return KIOSK_ONLY
+
+    nearby_ids = [device_id for device_id, _ in presence.nearby()]
+    with getdb() as conn:
+        # Only tasks belonging to someone standing near the kiosk.
+        placeholders = ",".join("?" * len(nearby_ids)) or "NULL"
+        cursor = conn.execute(
+            f"""UPDATE todos SET done = 1 WHERE id = ? AND user_id IN
+                (SELECT user_id FROM devices WHERE id IN ({placeholders}))""",
+            (todo_id, *nearby_ids),
+        )
+    if cursor.rowcount == 0:
+        return {"error": "Task not found for anyone near the kiosk"}, 404
+    return {"message": "Done"}
+
+
+@app.route("/api/presence", methods=["POST"])
+def report_presence():
+    """Send in a signal reading by hand: {"beacon": "BP-3", "rssi": -60}. For testing,
+    or for an ESP32 that listens for tags instead of this Pi."""
+    if not kiosk_allowed():
+        return KIOSK_ONLY
+
+    data = request.get_json()
+    device_id = presence.tag_to_device_id(data.get("beacon", ""))
+    if device_id is None or not isinstance(data.get("rssi"), (int, float)):
+        return {"error": 'Send {"beacon": "BP-<device id>", "rssi": <number>}'}, 400
+    presence.update(device_id, data["rssi"])
     return {"message": "OK"}
 
 
@@ -600,8 +693,26 @@ def delete_source(source_id):
     return {"message": "Deleted"}
 
 
+# ---------- The website itself ----------
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def website(path):
+    if path.startswith("api/"):
+        return {"error": "Not found"}, 404
+    if path and (SITE_DIR / path).is_file():
+        return send_from_directory(SITE_DIR, path)
+    # Pages like /kiosk and /ambient are handled by React inside index.html.
+    if (SITE_DIR / "index.html").is_file():
+        return send_from_directory(SITE_DIR, "index.html")
+    return "The website hasn't been built yet. In the website folder run: npm run build", 404
+
+
 if __name__ == "__main__":
     initdb()
+    # With DEBUG=1 Flask runs this file twice (for auto-reload); only listen for Bluetooth once.
+    if os.environ.get("DEBUG") != "1" or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        presence.start_scanner()
     # DEBUG=1 turns on auto-reload while coding. Leave it off on the Pi:
     # debug mode lets anyone on the network reach Flask's debugger.
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=os.environ.get("DEBUG") == "1")

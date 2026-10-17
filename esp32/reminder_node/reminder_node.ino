@@ -6,21 +6,26 @@
 //   - hold for 1 second -> stops ringing (the task stays on the list)
 // It also gives two quick beeps when you press "Test beep" on the website.
 //
+// It also broadcasts a Bluetooth name like "BP-3" so the kiosk can tell its owner is
+// standing nearby, and show their tasks.
+//
 // Setup:
 // 1. Arduino IDE: Boards Manager -> install "esp32" by Espressif.
 //    Library Manager -> install "ArduinoJson" by Benoit Blanchon.
-// 2. On the website: Devices panel -> + -> give it a name -> copy its key into DEVICE_KEY below.
-// 3. Fill in the Wi-Fi details (2.4 GHz only - ESP32s can't use 5 GHz), then upload.
+// 2. Tools -> Partition Scheme -> "Huge APP (3MB No OTA)". Wi-Fi + Bluetooth don't fit otherwise.
+// 3. On the website: Devices panel -> + -> give it a name -> copy its key into DEVICE_KEY below.
+// 4. Fill in the Wi-Fi details (2.4 GHz only - ESP32s can't use 5 GHz), then upload.
 
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
+#include <BLEDevice.h>
 
 // ---------- Change these ----------
 const char* WIFI_NAME     = "your-hotspot-name";
 const char* WIFI_PASSWORD = "your-hotspot-password";
-const char* SERVER_NAME   = "todopi";  // the server Pi's hostname, without ".local"
+const char* SERVER_NAME   = "mk3";     // the server Pi's hostname, without ".local"
 const char* SERVER_IP     = "";        // optional: an IP like "192.168.1.50" to skip the name lookup
 const int   SERVER_PORT   = 5000;
 const char* DEVICE_KEY    = "paste-the-key-from-the-website";
@@ -45,6 +50,24 @@ bool buzzerOn = false;
 
 unsigned long pressStarted = 0;
 bool wasPressed = false;
+
+String beaconName;  // e.g. "BP-3", told to us by the server on the first check-in
+
+// Broadcasts our Bluetooth name over and over so the kiosk can measure how close we are.
+void startBeacon(const String& name) {
+  if (name.length() == 0 || name == beaconName) return;
+  beaconName = name;
+  BLEDevice::init(name.c_str());
+  BLEAdvertising* advertising = BLEDevice::getAdvertising();
+  BLEAdvertisementData data;
+  data.setFlags(0x06);  // general discoverable, Bluetooth LE only
+  data.setName(name.c_str());
+  advertising->setAdvertisementData(data);
+  advertising->setMinInterval(0x20);  // advertise often (every ~20-40 ms) for steadier readings
+  advertising->setMaxInterval(0x40);
+  advertising->start();
+  Serial.println("Broadcasting Bluetooth tag " + name);
+}
 
 void setBuzzer(bool on) {
   if (on == buzzerOn) return;
@@ -138,6 +161,8 @@ void poll() {
     Serial.println("Got a reply I couldn't read");
     return;
   }
+
+  startBeacon(doc["beacon"] | "");
 
   if (doc["test"] | false) {
     Serial.println("Test beep!");

@@ -136,7 +136,9 @@ function ReminderDevices({ devices, onAdd, onDelete, onTest }) {
             <span className={`device-dot${device.online ? " is-online" : ""}`} title={device.online ? "Online" : "Offline"} />
             <div className="device-info">
               <span className="device-name">{device.name}</span>
-              <span className="device-meta">{device.online ? "Online" : device.last_seen ? "Offline" : "Never connected"}</span>
+              <span className="device-meta">
+                {device.online ? "Online" : device.last_seen ? "Offline" : "Never connected"} · tag {device.beacon}
+              </span>
             </div>
             <button type="button" className="icon-btn icon-btn-sm" title="Test beep" aria-label={`Test ${device.name}`} onClick={() => onTest(device)}>
               <BellRing size={16} />

@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "./api";
 import Ambient from "./components/Ambient";
+import Kiosk from "./components/Kiosk";
 import SignIn from "./components/SignIn";
 import Workspace from "./components/Workspace";
 
-// The kiosk screen lives at /ambient; everything else is the normal app.
-const isAmbient = window.location.pathname.replace(/\/+$/, "") === "/ambient";
+// /kiosk: the shared screen (no sign-in). /ambient: your own full-screen view. Anything else: the app.
+const page = window.location.pathname.replace(/\/+$/, "");
 
 export default function App() {
+  return page === "/kiosk" ? <Kiosk /> : <SignedInApp />;
+}
+
+function SignedInApp() {
   const [user, setUser] = useState(null);
   // If a token is saved from last time, check it with the server before showing anything.
   const [checking, setChecking] = useState(() => Boolean(localStorage.getItem("token")));
@@ -42,6 +47,6 @@ export default function App() {
     );
   }
   if (!user) return <SignIn onSignedIn={handleSignedIn} />;
-  if (isAmbient) return <Ambient onSignOut={handleSignOut} />;
+  if (page === "/ambient") return <Ambient onSignOut={handleSignOut} />;
   return <Workspace username={user} onSignOut={handleSignOut} />;
 }
